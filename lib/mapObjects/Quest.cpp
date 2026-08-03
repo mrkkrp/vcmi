@@ -789,6 +789,20 @@ void QuestGuard::init(vstd::RNG & rand)
 
 bool QuestGuard::passableFor(PlayerColor color) const
 {
+	// A keymaster border guard blocks passage until the player holds the matching
+	// key(s): routing onto its tile is what triggers the "tear it down?" prompt in
+	// onHeroVisit, after which the guard is removed. isCompleted is never set for a
+	// keymaster mission, so gate on the key here (mirroring QuestGate::passableFor).
+	if(!getQuest().mission.requiredKeys.empty())
+	{
+		for(const auto & key : getQuest().mission.requiredKeys)
+			if(!cb->getPlayerState(color)->wasKeymasterVisited(key))
+				return false;
+		return true;
+	}
+
+	// A standalone quest guard (bring artifact / kill creature / ...) opens once its
+	// quest has been completed by a visiting hero.
 	return getQuest().isCompleted;
 }
 

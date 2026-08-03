@@ -213,6 +213,43 @@ TEST_F(QuestBorderTest, BorderGuard_AnsweredYes_removesObject)
 		<< "border guard should be removed from the map after a positive answer";
 }
 
+TEST_F(QuestBorderTest, BorderGuard_BeforeKeymaster_passableForFalse)
+{
+	// A border guard is impassable until the player has the matching key — the
+	// pathfinder must not route heroes onto its tile, otherwise the guard can
+	// never be reached (and thus never torn down).
+	auto s = questBorderGuard();
+	ASSERT_NO_FATAL_FAILURE(startWithMap(std::move(s.builder)));
+
+	const auto * borderGuard = findObjectAt(s.questPos2);
+	ASSERT_NE(borderGuard, nullptr);
+	EXPECT_FALSE(borderGuard->passableFor(PlayerColor(0)));
+}
+
+TEST_F(QuestBorderTest, BorderGuard_AfterKeymaster_passableForTrue)
+{
+	// Once a hero visits the matching keymaster, the border guard of that colour
+	// becomes passable for the player, so the hero can reach it and be offered the
+	// removal prompt. Regression: this used to gate on Quest::isCompleted, which a
+	// keymaster mission never sets, leaving the guard permanently impassable.
+	auto s = questBorderGuard();
+	ASSERT_NO_FATAL_FAILURE(startWithMap(std::move(s.builder)));
+
+	auto * hero        = findHeroAt(s.heroPos);
+	auto * keymaster   = findObjectAt(s.questPos);
+	auto * borderGuard = findObjectAt(s.questPos2);
+	ASSERT_NE(hero,        nullptr);
+	ASSERT_NE(keymaster,   nullptr);
+	ASSERT_NE(borderGuard, nullptr);
+
+	ASSERT_FALSE(borderGuard->passableFor(PlayerColor(0)));
+
+	visit(hero, keymaster);
+
+	EXPECT_TRUE(borderGuard->passableFor(PlayerColor(0)))
+		<< "after visiting the matching keymaster, the border guard should be passable for red";
+}
+
 TEST_F(QuestBorderTest, BorderGuard_TwoSiblingsSameColor_emitOnlyOneAddQuest)
 {
 	// Two border guards of the same colour share a single quest-log entry, so
